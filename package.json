@@ -1,0 +1,44 @@
+{
+  "name": "content-creator-toolbox",
+  "version": "2.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "npx eslint ./ --no-eslintrc -c ./.eslintrc.js",
+    "lint:fix": "npm run lint:fix-eslint && npm run lint:fix-prettier",
+    "lint:fix-eslint": "eslint --ext .js,.ts ./ --max-warnings 0 --ignore-path .gitignore --ignore-path .eslintignore --fix",
+    "lint:fix-prettier": "prettier ./ --ignore-path .gitignore --ignore-path .eslintignore --ignore-path .prettierignore --write './**/*.{js,ts}' --ignore-unknown"
+  },
+  "keywords": [
+    "watermark-removal",
+    "content-creator",
+    "toolbox",
+    "image-processing",
+    "douyin",
+    "wechat-miniprogram"
+  ],
+  "author": "Chenwenwen1007",
+  "license": "MIT",
+  "description": "一站式创作辅助工具集 - 短视频去水印、AI文案提取、图片处理等多种工具",
+  "dependencies": {
+    "tdesign-miniprogram": "^1.11.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.49.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "prettier": "^3.0.2"
+  },
+  "lint-staged": {
+    "{src,example,script}/**/*.{js,ts,wxml,html,json,less}": [
+      "prettier --write"
+    ],
+    "**/*.{js,ts}": [
+      "eslint --fix"
+    ]
+  }
+}

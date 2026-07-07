@@ -1,0 +1,11 @@
+{
+  "pages": ["pages/home/index"],
+  "window": {
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#f6f7fb",
+    "navigationBarBackgroundColor": "#f6f7fb",
+    "navigationBarTitleText": "个人创作工具箱",
+    "navigationBarTextStyle": "black"
+  },
+  "sitemapLocation": "sitemap.json"
+}
