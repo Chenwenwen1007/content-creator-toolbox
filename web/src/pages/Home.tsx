@@ -30,9 +30,9 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero 搜索区域 */}
-      <section className="pt-16 pb-12 px-4 relative overflow-hidden">
+      <section className="pt-16 pb-12 px-4 relative">
         {/* 背景装饰 */}
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-20 left-1/4 w-64 h-64 bg-amber-accent/10 rounded-full blur-3xl"></div>
           <div className="absolute top-32 right-1/4 w-48 h-48 bg-moss/10 rounded-full blur-3xl"></div>
         </div>
@@ -70,7 +70,7 @@ export default function Home() {
 
             {/* 搜索结果下拉 */}
             {isSearching && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-card-hover border border-cream-200 overflow-hidden z-50 max-h-80 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-card-hover border border-cream-200 z-50 max-h-96 overflow-y-auto">
                 {searchResults.length > 0 ? (
                   <div className="p-2">
                     <p className="text-xs text-ink-300 px-3 py-2">找到 {searchResults.length} 个工具</p>

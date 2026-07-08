@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.DEV ? '' : 'http://127.0.0.1:9527';
+const API_BASE_URL = '';
 
 /**
  * 解析响应数据的通用函数

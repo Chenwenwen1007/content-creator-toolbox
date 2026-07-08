@@ -47,8 +47,8 @@
 
 ### 解决方法
 
-- 本地开发时确认 [config.js](/F:/Pyhton_Project/WeChatProject/qushuiyin/config.js) 为 `http://127.0.0.1:8000`
-- 启动后先访问 `http://127.0.0.1:8000/health`
+- 本地开发时确认 [config.js](../config.js) 为 `http://127.0.0.1:17891`
+- 启动后先访问 `http://127.0.0.1:17891/health`
 - 微信开发者工具中关闭合法域名校验，仅用于本地调试
 - 上线时改成你自己的备案 HTTPS 域名
 

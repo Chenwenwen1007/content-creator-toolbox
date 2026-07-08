@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     app_name: str = "short-video-parser"
     app_env: str = "development"
     app_host: str = "0.0.0.0"
-    app_port: int = 8000
-    app_base_url: str = "http://127.0.0.1:8000"
+    app_port: int = 17891
+    app_base_url: str = "http://127.0.0.1:17891"
     cors_origins: List[str] | str = ["*"]
     http_timeout: float = 20.0
     download_timeout: float = 120.0

@@ -40,7 +40,7 @@ npm install
 npm run dev
 ```
 
-访问地址：http://localhost:5173
+访问地址：http://localhost:17890
 
 ### 构建生产版本
 
@@ -114,8 +114,8 @@ web/
 
 前端开发环境已配置 API 代理，`/api/*` 请求会自动转发到后端：
 
-- 前端地址：`http://localhost:5173`
-- 代理目标：`http://127.0.0.1:9527`
+- 前端地址：`http://localhost:17890`
+- 代理目标：`http://127.0.0.1:17891`
 
 如需修改后端地址，编辑 `vite.config.ts` 中的 `server.proxy` 配置。
 

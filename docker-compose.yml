@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: toolbox-backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=17891
+      - APP_BASE_URL=http://127.0.0.1:17891
+      - CORS_ORIGINS=*
+    expose:
+      - "17891"
+    networks:
+      - toolbox-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: toolbox-frontend
+    restart: always
+    ports:
+      - "18080:80"
+    depends_on:
+      - backend
+    networks:
+      - toolbox-network
+
+networks:
+  toolbox-network:
+    driver: bridge

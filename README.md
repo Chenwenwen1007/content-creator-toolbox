@@ -171,8 +171,8 @@ python -m server.main
 
 启动成功后访问：
 
-- `http://127.0.0.1:8001/health`
-- `http://127.0.0.1:8001/docs`
+- `http://127.0.0.1:17891/health`
+- `http://127.0.0.1:17891/docs`
 
 ## 二、本地运行 Web 前端
 
@@ -188,14 +188,14 @@ npm install
 npm run dev
 ```
 
-启动成功后访问：`http://localhost:5173`
+启动成功后访问：`http://localhost:17890`
 
 ### 3. 开发环境代理
 
 前端开发环境已配置 API 代理，`/api/*` 请求会自动转发到后端：
 
-- 前端地址：`http://localhost:5173`
-- 代理目标：`http://127.0.0.1:9527`
+- 前端地址：`http://localhost:17890`
+- 代理目标：`http://127.0.0.1:17891`
 
 如需修改后端地址，编辑 `web/vite.config.ts` 中的 `server.proxy` 配置。
 
@@ -215,7 +215,7 @@ F:\Pyhton_Project\WeChatProject\qushuiyin
 
 ```js
 export default {
-  baseUrl: 'http://127.0.0.1:9527',
+  baseUrl: 'http://127.0.0.1:17891',
 };
 ```
 
@@ -255,8 +255,8 @@ export default {
     "author": "作者昵称",
     "cover_url": "https://...",
     "video_url": "https://...",
-    "download_url": "http://127.0.0.1:8000/api/download?token=xxx",
-    "preview_video_url": "http://127.0.0.1:8001/api/media?token=xxx",
+    "download_url": "http://127.0.0.1:17891/api/download?token=xxx",
+    "preview_video_url": "http://127.0.0.1:17891/api/media?token=xxx",
     "raw_url": "https://v.douyin.com/xxxx/",
     "resolved_url": "https://www.douyin.com/video/xxxx"
   }
@@ -341,6 +341,28 @@ export default {
 
 ## 六、部署到阿里云 ECS
 
+### ⚠️ 部署前必读
+
+1. **安全组端口开放**：登录阿里云控制台，确保ECS实例安全组入方向开放以下端口：
+   - `22`：SSH远程连接（必须开，否则连不上服务器）
+   - `18080`：Web应用访问端口
+2. **连接服务器**：如果遇到SSH `Permission denied (publickey)` 错误、不会配置密钥，**[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)** 第一部分有详细的图文级解决方案，包括Windows pem权限修复、密钥绑定后必须重启服务器等踩坑总结，强烈推荐新手先看。
+
+### 🚀 推荐：Docker一键部署（最简单）
+
+详细的保姆级Docker部署教程请看：**[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)**
+
+简单来说，连接服务器上传代码后只需要3条命令：
+```bash
+cp .env.production.example .env
+docker compose up -d --build
+```
+然后访问 `http://你的服务器IP:18080` 即可。
+
+---
+
+### 以下是传统部署方式（不推荐，适合需要手动配置的场景）
+
 以下以 Ubuntu 22.04 为例。
 
 ### 1. 安装环境
@@ -372,8 +394,8 @@ cp .env.example .env
 
 ```env
 APP_ENV=production
-APP_HOST=0.0.0.0
-APP_PORT=8000
+APP_HOST=127.0.0.1
+APP_PORT=17891
 APP_BASE_URL=https://your-domain.com
 CORS_ORIGINS=https://servicewechat.com,https://your-domain.com
 ```
@@ -389,7 +411,7 @@ python -m server.main
 另开终端测试：
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:17891/health
 ```
 
 ### 3. ECS 安全组放行
@@ -400,7 +422,7 @@ curl http://127.0.0.1:8000/health
 - `80`：HTTP
 - `443`：HTTPS
 
-如果只让 Nginx 对外，`8000` 不需要开放公网。
+如果只让 Nginx 对外，`17891` 不需要开放公网。
 
 ### 4. 使用 nohup 常驻
 
