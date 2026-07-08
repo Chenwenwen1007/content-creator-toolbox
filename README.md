@@ -359,6 +359,26 @@ docker compose up -d --build
 ```
 然后访问 `http://你的服务器IP:18080` 即可。
 
+### Docker部署常见问题快速参考
+
+| 问题 | 解决方案 |
+|------|---------|
+| 构建报错 `python:3.11-slim: not found` | 国内网络问题，先配置Docker镜像加速器，详见DEPLOY_GUIDE.md |
+| `docker.io/library/xxx: pull access denied` | 不要改Dockerfile镜像名为阿里云仓库地址，配置daemon.json加速器即可 |
+| `curl 127.0.0.1:17891/health` Connection refused | 正常！后端只在Docker内网暴露，用 `curl 127.0.0.1:18080/health` 验证 |
+| 访问 `/api/health` 返回404 | 已修复，拉取最新代码重新构建即可 |
+| 浏览器访问超时 | 检查阿里云安全组是否开放18080端口 |
+| `version is obsolete` 警告 | 忽略即可，不影响功能 |
+
+**本地修改代码后更新到服务器：**
+```bash
+cd /opt/projects/content-creator-toolbox
+git pull
+docker compose up -d --build
+```
+
+详细的图文级部署教程和完整问题排查请参考 **[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)**。
+
 ---
 
 ### 以下是传统部署方式（不推荐，适合需要手动配置的场景）
