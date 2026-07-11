@@ -14,6 +14,8 @@ services:
       - APP_PORT=17891
       - APP_BASE_URL=http://127.0.0.1:17891
       - CORS_ORIGINS=*
+    volumes:
+      - ./data:/app/data
     expose:
       - "17891"
     networks:

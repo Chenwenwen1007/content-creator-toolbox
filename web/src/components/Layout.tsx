@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Settings, Wand2 } from 'lucide-react';
+import { Home, Settings } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,10 +18,8 @@ export function Layout({ children }: LayoutProps) {
       <header className="bg-white/80 backdrop-blur-sm border-b border-cream-200 sticky top-0 z-50">
         <div className="container xl:max-w-5xl px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-accent flex items-center justify-center">
-              <Wand2 size={18} className="text-white" strokeWidth={1.5} />
-            </div>
-            <span className="font-serif text-lg font-semibold text-ink-900">工具箱</span>
+            <img src="/logo.jpg" alt="柚米去水印" className="w-8 h-8 rounded-lg object-cover" />
+            <span className="font-serif text-lg font-semibold text-ink-900">创作工具箱</span>
           </Link>
           <nav className="flex items-center gap-1">
             <Link

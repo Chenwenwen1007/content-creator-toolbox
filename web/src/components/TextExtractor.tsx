@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FileText, Copy, Check, Loader2, Settings, Sparkles, Pyramid, List, AlignLeft } from 'lucide-react';
-import { parseVideo, extractVideoTextAI, VideoTextExtractResult } from '../api/request';
+import { parseVideo, extractVideoTextAI, VideoTextExtractResult, reportToolUsage } from '../api/request';
 import { useAppStore } from '../store/app';
 import { Link } from 'react-router-dom';
 
@@ -154,6 +154,8 @@ export function TextExtractor() {
 
       setProgress(100);
       setAiResult(result);
+      // AI提取成功，上报工具使用
+      reportToolUsage('text-extract');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'AI 提取失败，请稍后重试');
     } finally {

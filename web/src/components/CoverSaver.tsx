@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Image, Download, Copy, Check, Loader2 } from 'lucide-react';
-import { parseVideo, ParseResult, getCoverProxyUrl } from '../api/request';
+import { parseVideo, ParseResult, getCoverProxyUrl, reportToolUsage } from '../api/request';
 
 /**
  * 封面保存工具组件
@@ -30,6 +30,7 @@ export function CoverSaver() {
     try {
       const data = await parseVideo(inputText.trim());
       setResult(data);
+      reportToolUsage('cover-save');
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取封面失败，请稍后重试');
     } finally {

@@ -186,3 +186,75 @@ export function getCoverProxyUrl(previewCoverUrl: string): string {
   if (!previewCoverUrl) return '';
   return previewCoverUrl;
 }
+
+/**
+ * 统计数据类型定义
+ */
+export interface StatsData {
+  total_home_views: number;
+  total_tool_usages: number;
+  tool_stats: Record<string, number>;
+}
+
+/**
+ * 上报首页访问
+ * 调用后端 /api/stats/home-view 接口记录一次首页访问（受3小时冷却限制）
+ */
+export async function reportHomeView(): Promise<{ counted: boolean }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stats/home-view`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    if (!response.ok) return { counted: false };
+    const data = await response.json();
+    return extractData<{ counted: boolean }>(data);
+  } catch {
+    return { counted: false };
+  }
+}
+
+/**
+ * 上报工具使用
+ * 调用后端 /api/stats/tool-usage/{tool_id} 接口记录一次工具使用
+ * @param toolId 工具ID
+ */
+export async function reportToolUsage(toolId: string): Promise<{ success: boolean }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stats/tool-usage/${toolId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    if (!response.ok) return { success: false };
+    const data = await response.json();
+    return extractData<{ success: boolean }>(data);
+  } catch {
+    return { success: false };
+  }
+}
+
+/**
+ * 获取所有统计数据
+ * 调用后端 /api/stats/all 接口获取首页访问总数和各工具使用次数
+ */
+export async function getAllStats(): Promise<StatsData> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stats/all`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      return { total_home_views: 0, total_tool_usages: 0, tool_stats: {} };
+    }
+    const data = await response.json();
+    return extractData<StatsData>(data);
+  } catch {
+    return { total_home_views: 0, total_tool_usages: 0, tool_stats: {} };
+  }
+}

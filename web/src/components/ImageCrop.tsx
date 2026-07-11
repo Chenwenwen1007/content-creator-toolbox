@@ -12,6 +12,7 @@ import {
   MousePointer2,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { reportToolUsage } from '../api/request';
 
 /**
  * 裁剪比例类型
@@ -294,6 +295,7 @@ export function ImageCrop() {
     link.download = `${originalName}-cropped.png`;
     link.href = img;
     link.click();
+    reportToolUsage('image-crop');
   };
 
   /**

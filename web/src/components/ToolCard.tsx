@@ -4,7 +4,7 @@ interface ToolCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  status: 'available' | 'coming-soon';
+  status: 'available' | 'coming-soon' | 'beta';
   isActive: boolean;
   onClick: () => void;
   delay?: number;
@@ -23,14 +23,16 @@ export function ToolCard({
   onClick,
   delay = 0,
 }: ToolCardProps) {
-  const statusStyles = {
+  const statusStyles: Record<string, string> = {
     available: 'bg-moss/10 text-moss',
     'coming-soon': 'bg-brick/10 text-brick',
+    beta: 'bg-amber-100 text-amber-700',
   };
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     available: '可用',
     'coming-soon': '开发中',
+    beta: '开发中',
   };
 
   return (
@@ -59,7 +61,7 @@ export function ToolCard({
               {title}
             </h3>
             <span className={`
-              text-xs px-2 py-0.5 rounded-full font-medium
+              text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap
               ${statusStyles[status]}
             `}>
               {statusLabels[status]}

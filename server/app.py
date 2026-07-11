@@ -1,7 +1,8 @@
 import logging
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +10,9 @@ from fastapi.responses import JSONResponse
 from server.api.routes_health import router as health_router
 from server.api.routes_multimodal import router as multimodal_router
 from server.api.routes_parse import router as parse_router
+from server.api.routes_stats import router as stats_router
 from server.config import get_settings
+from server.database import init_db
 from server.utils.exceptions import AppError
 from server.utils.logger import configure_logging
 
@@ -17,24 +20,48 @@ from server.utils.logger import configure_logging
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     configure_logging()
+    init_db()
     yield
 
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 app = FastAPI(
-    title="Personal Short Video Parser",
-    version="1.0.0",
+    title="创作工具箱",
+    version="2.1.0",
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 修复CORS配置：当使用credentials时不能用allow_origins=["*"]
+# 如果配置为["*"]，则使用allow_origin_regex匹配所有来源（允许携带credentials）
+cors_origins = settings.cors_origins
+cors_kwargs = {
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if cors_origins == ["*"]:
+    cors_kwargs["allow_origin_regex"] = ".*"
+else:
+    cors_kwargs["allow_origins"] = cors_origins
+
+app.add_middleware(CORSMiddleware, **cors_kwargs)
+
+
+@app.middleware("http")
+async def visitor_cookie_middleware(request: Request, call_next):
+    """为新访客生成唯一cookie标识，用于访问统计防刷"""
+    response: Response = await call_next(request)
+    if not request.cookies.get("toolbox_visitor_id"):
+        visitor_id = str(uuid.uuid4())
+        response.set_cookie(
+            key="toolbox_visitor_id",
+            value=visitor_id,
+            max_age=365 * 24 * 60 * 60,
+            httponly=True,
+            samesite="lax",
+        )
+    return response
 
 
 @app.exception_handler(AppError)
@@ -94,3 +121,4 @@ async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONRespons
 app.include_router(health_router)
 app.include_router(parse_router)
 app.include_router(multimodal_router)
+app.include_router(stats_router)

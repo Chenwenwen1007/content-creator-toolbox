@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Video, Download, Copy, Check, ChevronDown, ChevronUp, Loader2, ZoomIn } from 'lucide-react';
-import { parseVideo, ParseResult } from '../api/request';
+import { parseVideo, ParseResult, reportToolUsage } from '../api/request';
 import { ImageLightbox } from './ImageLightbox';
 
 /**
@@ -37,6 +37,8 @@ export function VideoParser() {
       const data = await parseVideo(inputText.trim());
       setResult(data);
       setIsNoWatermark(data.no_watermark_verified);
+      // 解析成功，上报工具使用
+      reportToolUsage('video-parse');
     } catch (err) {
       setError(err instanceof Error ? err.message : '解析失败，请稍后重试');
     } finally {

@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { reportToolUsage } from '../api/request';
 
 /**
  * 目标格式类型
@@ -188,6 +189,7 @@ export function ImageConvert() {
     link.download = `${originalName}-converted.${ext}`;
     link.href = convertedImage;
     link.click();
+    reportToolUsage('image-convert');
   };
 
   /**

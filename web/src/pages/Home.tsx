@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ArrowRight, Sparkles } from 'lucide-react';
+import { Search, ArrowRight, Sparkles, Eye } from 'lucide-react';
 import { categories, tools, searchTools } from '../data/tools';
 import { cn } from '../lib/utils';
+import { reportHomeView, getAllStats, type StatsData } from '../api/request';
 
 /**
  * 首页组件
@@ -10,7 +11,32 @@ import { cn } from '../lib/utils';
  */
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState<StatsData>({
+    total_home_views: 0,
+    total_tool_usages: 0,
+    tool_stats: {},
+  });
   const navigate = useNavigate();
+
+  /**
+   * 组件挂载时：先上报首页访问，再获取统计数据（确保上报完成后统计是最新的）
+   */
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await reportHomeView();
+      } catch {
+        // 上报失败不影响页面显示
+      }
+      try {
+        const data = await getAllStats();
+        setStats(data);
+      } catch {
+        // 获取失败保持默认0
+      }
+    };
+    init();
+  }, []);
 
   const searchResults = useMemo(() => {
     return searchTools(searchQuery);
@@ -20,6 +46,16 @@ export default function Home() {
 
   const handleToolClick = (path: string) => {
     navigate(path);
+  };
+
+  /**
+   * 格式化数字显示（超过1000显示为1k+）
+   * @param num 数字
+   */
+  const formatCount = (num: number): string => {
+    if (num >= 10000) return `${(num / 10000).toFixed(1)}w+`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k+`;
+    return num.toString();
   };
 
   const categoryColors: Record<string, string> = {
@@ -49,6 +85,18 @@ export default function Home() {
             <p className="text-ink-500 text-base md:text-lg max-w-xl mx-auto leading-relaxed opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
               短视频去水印、文案提取、图片处理，多种工具，开箱即用
             </p>
+            {/* 统计数据展示 */}
+            <div className="flex items-center justify-center gap-6 mt-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+              <div className="flex items-center gap-1.5 text-sm text-ink-400">
+                <Eye size={14} strokeWidth={1.5} />
+                <span>累计访问 {formatCount(stats.total_home_views)}</span>
+              </div>
+              <div className="w-px h-4 bg-cream-200"></div>
+              <div className="flex items-center gap-1.5 text-sm text-ink-400">
+                <Sparkles size={14} strokeWidth={1.5} />
+                <span>工具使用 {formatCount(stats.total_tool_usages)}</span>
+              </div>
+            </div>
           </div>
 
           {/* 搜索框 */}
@@ -87,6 +135,11 @@ export default function Home() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-ink-900">{tool.name}</span>
                             <span className="text-xs text-ink-300">{tool.category}</span>
+                            {stats.tool_stats[tool.id] > 0 && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-accent/10 text-amber-accent">
+                                {formatCount(stats.tool_stats[tool.id])}次使用
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-ink-500 truncate">{tool.description}</p>
                         </div>
@@ -154,13 +207,20 @@ export default function Home() {
                                     开发中
                                   </span>
                                 )}
+                                {stats.tool_stats[tool.id] > 0 && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-moss/10 text-moss font-medium">
+                                    {formatCount(stats.tool_stats[tool.id])}次使用
+                                  </span>
+                                )}
                               </div>
                               <p className="text-sm text-ink-500 leading-relaxed line-clamp-2">{tool.description}</p>
                             </div>
                           </div>
                           <div className="mt-4 flex items-center justify-between">
                             <span className="text-xs text-ink-300">{tool.category}</span>
-                            <ArrowRight size={16} className="text-ink-300 group-hover:text-amber-accent group-hover:translate-x-1 transition-all" strokeWidth={1.5} />
+                            <div className="flex items-center gap-2">
+                              <ArrowRight size={16} className="text-ink-300 group-hover:text-amber-accent group-hover:translate-x-1 transition-all" strokeWidth={1.5} />
+                            </div>
                           </div>
                         </Link>
                       );

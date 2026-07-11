@@ -6,9 +6,13 @@ import { VideoParser } from "@/components/VideoParser";
 import { TextExtractor } from "@/components/TextExtractor";
 import { CoverSaver } from "@/components/CoverSaver";
 import { ImageGrid } from "@/components/ImageGrid";
+import { ImageStitch } from "@/components/ImageStitch";
 import { ImageCompress } from "@/components/ImageCompress";
 import { ImageConvert } from "@/components/ImageConvert";
 import { ImageCrop } from "@/components/ImageCrop";
+import { ImageRotate } from "@/components/ImageRotate";
+import { ImageWatermark } from "@/components/ImageWatermark";
+import { ImageRemoveBg } from "@/components/ImageRemoveBg";
 import { PlaceholderTool } from "@/components/PlaceholderTool";
 import { NotificationBar } from "@/components/NotificationBar";
 import { FloatingContact } from "@/components/FloatingContact";
@@ -31,9 +35,7 @@ export default function App() {
           <div className="container xl:max-w-5xl">
             <div className="h-16 flex items-center justify-between">
               <Link to="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-accent to-amber-dark flex items-center justify-center">
-                  <span className="text-white font-serif font-bold text-sm">T</span>
-                </div>
+                <img src="/logo.jpg" alt="柚米去水印" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="font-serif text-lg font-semibold text-ink-900">创作工具箱</span>
               </Link>
               <div className="flex items-center gap-2">
@@ -103,6 +105,14 @@ export default function App() {
               }
             />
             <Route
+              path="/image-tools/stitch"
+              element={
+                <ToolLayout categoryId="image-tools">
+                  <ImageStitch />
+                </ToolLayout>
+              }
+            />
+            <Route
               path="/image-tools/compress"
               element={
                 <ToolLayout categoryId="image-tools">
@@ -123,6 +133,30 @@ export default function App() {
               element={
                 <ToolLayout categoryId="image-tools">
                   <ImageCrop />
+                </ToolLayout>
+              }
+            />
+            <Route
+              path="/image-tools/rotate"
+              element={
+                <ToolLayout categoryId="image-tools">
+                  <ImageRotate />
+                </ToolLayout>
+              }
+            />
+            <Route
+              path="/image-tools/watermark"
+              element={
+                <ToolLayout categoryId="image-tools">
+                  <ImageWatermark />
+                </ToolLayout>
+              }
+            />
+            <Route
+              path="/image-tools/remove-bg"
+              element={
+                <ToolLayout categoryId="image-tools">
+                  <ImageRemoveBg />
                 </ToolLayout>
               }
             />

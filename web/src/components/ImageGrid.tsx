@@ -11,8 +11,11 @@ import {
   Palette,
   Move,
   GripVertical,
+  Maximize2,
+  Ratio,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { reportToolUsage } from '../api/request';
 
 /**
  * 宫格模板配置
@@ -22,6 +25,15 @@ interface GridTemplate {
   rows: number;
   cols: number;
   icon: React.ReactNode;
+}
+
+/**
+ * 宽高比预设
+ */
+interface AspectPreset {
+  name: string;
+  ratio: number;
+  label: string;
 }
 
 /**
@@ -45,8 +57,21 @@ const templates: GridTemplate[] = [
 ];
 
 /**
- * 多宫格切图组件
- * 支持多种宫格布局、图片上传、拖拽排序、自定义间隔和背景色、导出图片
+ * 宽高比预设选项
+ */
+const aspectPresets: AspectPreset[] = [
+  { name: '1:1', ratio: 1, label: '正方形' },
+  { name: '4:5', ratio: 4 / 5, label: '小红书' },
+  { name: '3:4', ratio: 3 / 4, label: '竖版' },
+  { name: '9:16', ratio: 9 / 16, label: '抖音' },
+  { name: '16:9', ratio: 16 / 9, label: '横屏' },
+  { name: '4:3', ratio: 4 / 3, label: '横版' },
+  { name: '3:2', ratio: 3 / 2, label: '照片' },
+];
+
+/**
+ * 多宫格组件
+ * 支持多种宫格布局、自定义格子宽高比、图片上传拖拽排序、自定义间隔和背景色、导出尺寸调节
  */
 export function ImageGrid() {
   const [rows, setRows] = useState(3);
@@ -57,9 +82,21 @@ export function ImageGrid() {
   const [images, setImages] = useState<(ImageItem | null)[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [cellRatio, setCellRatio] = useState(1);
+  const [cellSize, setCellSize] = useState(400);
+  const [customRatioW, setCustomRatioW] = useState('1');
+  const [customRatioH, setCustomRatioH] = useState('1');
+  const [useCustomRatio, setUseCustomRatio] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 获取当前生效的宽高比
+   */
+  const effectiveRatio = useCustomRatio
+    ? (parseInt(customRatioW) || 1) / (parseInt(customRatioH) || 1)
+    : cellRatio;
 
   /**
    * 初始化图片数组
@@ -76,7 +113,7 @@ export function ImageGrid() {
   }, [rows, cols]);
 
   /**
-   * 应用模板
+   * 应用宫格模板
    * @param template 宫格模板
    */
   const applyTemplate = (template: GridTemplate) => {
@@ -85,8 +122,28 @@ export function ImageGrid() {
   };
 
   /**
+   * 应用宽高比预设
+   * @param preset 宽高比预设
+   */
+  const applyAspectPreset = (preset: AspectPreset) => {
+    setCellRatio(preset.ratio);
+    setUseCustomRatio(false);
+  };
+
+  /**
+   * 应用自定义宽高比
+   */
+  const applyCustomRatio = () => {
+    const w = parseInt(customRatioW);
+    const h = parseInt(customRatioH);
+    if (w > 0 && h > 0) {
+      setUseCustomRatio(true);
+    }
+  };
+
+  /**
    * 解析颜色输入
-   * 支持 #RRGGBB 和 rgb(r,g,b) 格式
+   * 支持 #RRGGBB、#RGB 和 rgb(r,g,b) 格式
    */
   const parseColor = (input: string): string | null => {
     const trimmed = input.trim();
@@ -137,7 +194,6 @@ export function ImageGrid() {
 
     Array.from(files).forEach((file) => {
       if (!file.type.startsWith('image/')) return;
-
       if (emptyIndex === -1) return;
 
       const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -178,8 +234,7 @@ export function ImageGrid() {
   };
 
   /**
-   * 处理放置
-   * 交换两张图片的位置
+   * 处理放置（交换图片位置）
    */
   const handleDrop = (index: number) => {
     if (draggedIndex === null || draggedIndex === index) {
@@ -243,15 +298,16 @@ export function ImageGrid() {
 
   /**
    * 导出宫格图片
-   * 将整个画布绘制到 canvas 并导出为 PNG
+   * 根据格子宽高比和输出尺寸绘制到canvas并下载
    */
   const exportImage = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const cellSize = 400;
-    const totalWidth = cols * cellSize + (cols + 1) * gap;
-    const totalHeight = rows * cellSize + (rows + 1) * gap;
+    const cellW = cellSize;
+    const cellH = Math.round(cellSize / effectiveRatio);
+    const totalWidth = cols * cellW + (cols + 1) * gap;
+    const totalHeight = rows * cellH + (rows + 1) * gap;
 
     canvas.width = totalWidth;
     canvas.height = totalHeight;
@@ -267,31 +323,40 @@ export function ImageGrid() {
         const index = row * cols + col;
         const imageItem = images[index];
 
-        const x = gap + col * (cellSize + gap);
-        const y = gap + row * (cellSize + gap);
+        const x = gap + col * (cellW + gap);
+        const y = gap + row * (cellH + gap);
 
         if (imageItem) {
           try {
             const img = await loadImage(imageItem.src);
-            const scale = Math.max(cellSize / img.width, cellSize / img.height);
-            const scaledWidth = img.width * scale;
-            const scaledHeight = img.height * scale;
-            const offsetX = x + (cellSize - scaledWidth) / 2;
-            const offsetY = y + (cellSize - scaledHeight) / 2;
+            const imgRatio = img.width / img.height;
+            const cellRatioVal = cellW / cellH;
+
+            let drawW: number, drawH: number;
+            if (imgRatio > cellRatioVal) {
+              drawH = cellH;
+              drawW = img.width * (cellH / img.height);
+            } else {
+              drawW = cellW;
+              drawH = img.height * (cellW / img.width);
+            }
+
+            const offsetX = x + (cellW - drawW) / 2;
+            const offsetY = y + (cellH - drawH) / 2;
 
             ctx.save();
             ctx.beginPath();
-            ctx.rect(x, y, cellSize, cellSize);
+            ctx.rect(x, y, cellW, cellH);
             ctx.clip();
-            ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+            ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
             ctx.restore();
           } catch {
             ctx.fillStyle = '#EFE8DA';
-            ctx.fillRect(x, y, cellSize, cellSize);
+            ctx.fillRect(x, y, cellW, cellH);
           }
         } else {
           ctx.fillStyle = '#EFE8DA';
-          ctx.fillRect(x, y, cellSize, cellSize);
+          ctx.fillRect(x, y, cellW, cellH);
         }
       }
     }
@@ -300,7 +365,8 @@ export function ImageGrid() {
     link.download = `image-grid-${rows}x${cols}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-  }, [rows, cols, gap, bgColor, images]);
+    reportToolUsage('image-grid');
+  }, [rows, cols, gap, bgColor, images, cellSize, effectiveRatio]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -316,12 +382,12 @@ export function ImageGrid() {
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* 左侧工具栏 */}
-        <div className="lg:w-64 flex-shrink-0 space-y-5">
+        <div className="lg:w-72 flex-shrink-0 space-y-4">
           {/* 模板选择 */}
           <div className="bg-white rounded-xl shadow-card border border-cream-100 p-4">
             <h3 className="font-serif text-sm font-semibold text-ink-900 mb-3 flex items-center gap-2">
               <GripVertical size={14} strokeWidth={1.5} className="text-amber-accent" />
-              常用模板
+              宫格模板
             </h3>
             <div className="grid grid-cols-5 gap-2">
               {templates.map((template) => (
@@ -377,6 +443,94 @@ export function ImageGrid() {
             </div>
           </div>
 
+          {/* 格子比例 */}
+          <div className="bg-white rounded-xl shadow-card border border-cream-100 p-4">
+            <h3 className="font-serif text-sm font-semibold text-ink-900 mb-3 flex items-center gap-2">
+              <Ratio size={14} strokeWidth={1.5} className="text-amber-accent" />
+              格子比例
+            </h3>
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
+              {aspectPresets.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => applyAspectPreset(preset)}
+                  className={cn(
+                    'px-1 py-1.5 rounded-md text-xs font-medium transition-all',
+                    !useCustomRatio && Math.abs(cellRatio - preset.ratio) < 0.001
+                      ? 'bg-amber-accent text-white shadow-sm'
+                      : 'bg-cream-50 text-ink-600 hover:bg-cream-100'
+                  )}
+                  title={preset.label}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                value={customRatioW}
+                onChange={(e) => setCustomRatioW(e.target.value)}
+                className="w-12 px-2 py-1 rounded-md border border-cream-300 text-center text-sm
+                           focus:outline-none focus:ring-1 focus:ring-amber-accent/30 focus:border-amber-accent"
+                placeholder="宽"
+              />
+              <span className="text-ink-400 text-xs">:</span>
+              <input
+                type="number"
+                min={1}
+                value={customRatioH}
+                onChange={(e) => setCustomRatioH(e.target.value)}
+                className="w-12 px-2 py-1 rounded-md border border-cream-300 text-center text-sm
+                           focus:outline-none focus:ring-1 focus:ring-amber-accent/30 focus:border-amber-accent"
+                placeholder="高"
+              />
+              <button
+                onClick={applyCustomRatio}
+                className={cn(
+                  'px-2 py-1 rounded-md text-xs font-medium transition-all',
+                  useCustomRatio
+                    ? 'bg-moss text-white'
+                    : 'bg-cream-100 text-ink-600 hover:bg-cream-200'
+                )}
+              >
+                应用
+              </button>
+            </div>
+          </div>
+
+          {/* 输出尺寸 */}
+          <div className="bg-white rounded-xl shadow-card border border-cream-100 p-4">
+            <h3 className="font-serif text-sm font-semibold text-ink-900 mb-3 flex items-center gap-2">
+              <Maximize2 size={14} strokeWidth={1.5} className="text-amber-accent" />
+              输出尺寸
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-500">每格宽度</span>
+                <span className="text-sm font-medium text-ink-900">{cellSize}px</span>
+              </div>
+              <input
+                type="range"
+                min={200}
+                max={1200}
+                step={50}
+                value={cellSize}
+                onChange={(e) => setCellSize(parseInt(e.target.value))}
+                className="w-full h-2 bg-cream-200 rounded-lg appearance-none cursor-pointer
+                           accent-amber-accent"
+              />
+              <div className="flex justify-between text-xs text-ink-400">
+                <span>200px</span>
+                <span>1200px</span>
+              </div>
+              <p className="text-xs text-ink-400 mt-1">
+                预计输出：{cols * cellSize + (cols + 1) * gap} × {Math.round(rows * cellSize / effectiveRatio) + (rows + 1) * gap}px
+              </p>
+            </div>
+          </div>
+
           {/* 间隔设置 */}
           <div className="bg-white rounded-xl shadow-card border border-cream-100 p-4">
             <h3 className="font-serif text-sm font-semibold text-ink-900 mb-3">图片间隔</h3>
@@ -404,7 +558,7 @@ export function ImageGrid() {
               背景颜色
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={bgColor}
@@ -412,19 +566,34 @@ export function ImageGrid() {
                     setBgColor(e.target.value);
                     setColorInput(e.target.value);
                   }}
-                  className="w-10 h-10 rounded-lg border border-cream-300 cursor-pointer
-                             bg-white p-0.5"
+                  className="w-16 h-10 lg:w-20 lg:h-12 rounded-lg border border-cream-300 cursor-pointer
+                             bg-white p-0.5 flex-shrink-0"
                 />
                 <input
                   type="text"
                   value={colorInput}
                   onChange={(e) => handleColorInputChange(e.target.value)}
-                  placeholder="#RRGGBB 或 rgb(r,g,b)"
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-cream-300 bg-white
-                             text-ink-900 text-sm font-mono
+                  placeholder="#F7F3EC"
+                  className="min-w-0 flex-1 px-2 py-2 lg:py-2.5 rounded-lg border border-cream-300 bg-white
+                             text-ink-900 text-xs font-mono
                              focus:outline-none focus:ring-2 focus:ring-amber-accent/30 focus:border-amber-accent
                              transition-all"
                 />
+              </div>
+              {/* 常用颜色 */}
+              <div className="flex flex-wrap gap-1.5">
+                {['#F7F3EC', '#FFFFFF', '#000000', '#FF6B6B', '#4ECDC4', '#45B7D1', '#F9CA24', '#A29BFE'].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setBgColor(c);
+                      setColorInput(c);
+                    }}
+                    className="w-6 h-6 rounded-md border border-cream-200 transition-transform hover:scale-110"
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -467,75 +636,85 @@ export function ImageGrid() {
         {/* 右侧画布区 */}
         <div className="flex-1 min-w-0">
           <div
-            className="bg-white rounded-xl shadow-card border border-cream-100 p-6"
-            style={{ backgroundColor: bgColor }}
+            className="bg-white rounded-xl shadow-card border border-cream-100 p-4 sm:p-6 overflow-auto"
           >
             <div
-              className="grid w-full"
+              className="mx-auto"
               style={{
-                gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gridTemplateRows: `repeat(${rows}, 1fr)`,
-                gap: `${gap}px`,
-                aspectRatio: `${cols} / ${rows}`,
+                backgroundColor: bgColor,
+                padding: gap,
+                borderRadius: '0.5rem',
               }}
             >
-              {images.map((image, index) => (
-                <div
-                  key={index}
-                  draggable={!!image}
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={() => handleDrop(index)}
-                  onDragEnd={handleDragEnd}
-                  className={cn(
-                    'relative rounded-lg overflow-hidden bg-cream-100 group',
-                    image ? 'cursor-move' : 'cursor-default',
-                    draggedIndex === index && 'opacity-50 scale-95',
-                    dragOverIndex === index && draggedIndex !== index && 'ring-2 ring-amber-accent ring-offset-2'
-                  )}
-                >
-                  {image ? (
-                    <>
-                      <img
-                        src={image.src}
-                        alt={`图片 ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        draggable={false}
-                      />
-                      <div className="absolute inset-0 bg-ink-900/0 group-hover:bg-ink-900/30 transition-colors">
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImage(index);
-                            }}
-                            className="p-1.5 rounded-full bg-white/90 text-brick hover:bg-white transition-colors"
-                          >
-                            <Trash2 size={14} strokeWidth={1.5} />
-                          </button>
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 text-ink-700 text-xs">
-                            <Move size={12} strokeWidth={1.5} />
-                            拖拽移动
+              <div
+                className="grid w-full"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                  gridTemplateRows: `repeat(${rows}, 1fr)`,
+                  gap: `${gap}px`,
+                  aspectRatio: `${cols} / ${rows / effectiveRatio}`,
+                  maxWidth: `${cols * 200 + (cols + 1) * gap}px`,
+                }}
+              >
+                {images.map((image, index) => (
+                  <div
+                    key={index}
+                    draggable={!!image}
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={() => handleDrop(index)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      'relative rounded-lg overflow-hidden bg-cream-100 group',
+                      image ? 'cursor-move' : 'cursor-default',
+                      draggedIndex === index && 'opacity-50 scale-95',
+                      dragOverIndex === index && draggedIndex !== index && 'ring-2 ring-amber-accent ring-offset-2'
+                    )}
+                    style={{ aspectRatio: `${effectiveRatio}` }}
+                  >
+                    {image ? (
+                      <>
+                        <img
+                          src={image.src}
+                          alt={`图片 ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          draggable={false}
+                        />
+                        <div className="absolute inset-0 bg-ink-900/0 group-hover:bg-ink-900/30 transition-colors">
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(index);
+                              }}
+                              className="p-1.5 rounded-full bg-white/90 text-brick hover:bg-white transition-colors"
+                            >
+                              <Trash2 size={14} strokeWidth={1.5} />
+                            </button>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 text-ink-700 text-xs">
+                              <Move size={12} strokeWidth={1.5} />
+                              拖拽移动
+                            </div>
                           </div>
                         </div>
+                      </>
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center border-2 border-dashed border-cream-300 rounded-lg cursor-pointer hover:border-amber-accent/50 hover:bg-cream-50/50 transition-all"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <div className="text-center">
+                          <Upload size={24} strokeWidth={1.5} className="text-ink-300 mx-auto mb-1" />
+                          <span className="text-xs text-ink-300">点击上传</span>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <div
-                      className="w-full h-full flex items-center justify-center border-2 border-dashed border-cream-300 rounded-lg cursor-pointer hover:border-amber-accent/50 hover:bg-cream-50/50 transition-all"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <div className="text-center">
-                        <Upload size={24} strokeWidth={1.5} className="text-ink-300 mx-auto mb-1" />
-                        <span className="text-xs text-ink-300">点击上传</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
