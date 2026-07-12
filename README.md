@@ -2,38 +2,86 @@
 
 > 一站式创作辅助工具集，支持 **微信小程序 + Web 端** 双端访问。短视频去水印解析、AI 文案提取、图片处理等多种工具，开箱即用。
 
+---
+
+## ⚡ 5分钟快速上手（新窗口请先看这里）
+
+### 项目是什么？
+一个内容创作者的在线工具箱，核心功能是**短视频无水印解析下载**（抖音/快手/小红书），附带多个实用的**图片处理工具**（均在浏览器本地处理，不上传服务器）。
+
+### 技术架构一眼懂
+```
+浏览器(Web/小程序)
+    ↓ HTTP请求
+Nginx(18080端口，前端静态资源 + /api反向代理)
+    ↓ Docker内网
+FastAPI后端(17891端口，Python 3.11)
+    ↓
+抖音/快手/小红书 视频平台
+```
+
+### 关键端口
+| 端口 | 用途 | 是否对外 |
+|------|------|---------|
+| `18080` | Web前端访问端口（Nginx） | ✅ 安全组必须开放 |
+| `17890` | 本地开发前端（Vite dev server） | ❌ 仅本地开发用 |
+| `17891` | 后端API（FastAPI） | ❌ Docker内部使用，不对外 |
+
+### 本地开发启动（两条命令）
+```bash
+# 终端1：启动后端
+python -m server.main          # → http://127.0.0.1:17891
+
+# 终端2：启动前端
+cd web && npm install && npm run dev   # → http://localhost:17890
+```
+
+### 云服务器更新（代码push到GitHub后）
+```bash
+cd /opt/projects/content-creator-toolbox
+git pull
+docker compose up -d --build
+```
+> 首次部署或遇到`.env not found`错误时，先执行 `cp .env.example .env`。
+> 详细部署教程看 👉 **[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)**
+
+---
+
 ## 项目亮点
 
 - 支持 **抖音官方API无水印解析**（非简单的 playwm→play 替换，是真无水印）
 - 支持 **快手、小红书** 视频解析
 - 支持 **第三方API兜底**（bugpk.com免费API），自有解析失败时自动切换
-- **Web 端创作工具箱**：8 个实用工具，涵盖短视频图文处理和图片处理
+- **Web 端创作工具箱**：10+ 个实用工具，涵盖短视频图文处理和图片处理
 - **AI 文案提取**：多模态大模型分析视频内容，金字塔结构总结输出
 - **微信小程序**：一键粘贴、解析、预览、下载保存到相册
-- Python FastAPI 后端，轻量高效，可本地运行或部署到云服务器
+- Python FastAPI 后端，轻量高效，Docker 一键部署到云服务器
 - 完整签名算法实现（SM3 + RC4 + Base64），从开源项目翻译为 Python
-- 图片处理全部本地完成，不上传服务器，保护用户隐私
+- 图片处理全部本地完成（Canvas），不上传服务器，保护用户隐私
 
 ## 技术栈
 
 ### 后端
-- FastAPI Python
+- FastAPI Python 3.11
 - Pydantic v2 数据校验
 - httpx 异步 HTTP 客户端
+- SQLite + 统计功能
+- Gunicorn 生产服务器
 
 ### 前端（Web）
 - React 18 + TypeScript
 - Vite 5 构建工具
 - TailwindCSS 3 样式框架
-- Zustand 状态管理
 - React Router v6 路由
 - Lucide React 图标库
+- Canvas API（图片处理全部前端完成）
 
 ### 前端（小程序）
 - 微信小程序原生框架
 
 ### 部署
-- 阿里云 ECS + Nginx + systemd（可选部署）
+- Docker Compose（后端 + 前端Nginx 双容器）
+- 阿里云 ECS + Nginx 反向代理
 
 ## 功能概览
 
@@ -45,13 +93,17 @@
 | 封面保存 | 提取视频高清封面图，一键保存 | ✅ 可用 |
 | 时间戳去除 | 自动识别并去除视频中的时间戳水印 | 🚧 开发中 |
 
-### 图片处理
+### 图片处理（全部前端Canvas本地处理）
 | 工具 | 说明 | 状态 |
 |------|------|------|
-| 多宫格切图 | 九宫格、四宫格图片生成，自定义行列和背景色 | ✅ 可用 |
+| 多宫格 | 九宫格/四宫格切图，支持自定义行列、宽高比、尺寸、背景色 | ✅ 可用 |
+| 图片拼接 | 横向/竖向拼接多张图片，支持拖拽排序、间距调节、统一尺寸开关 | ✅ 可用 |
 | 图片压缩 | 在线压缩图片体积，保持画质，实时预览 | ✅ 可用 |
 | 格式转换 | PNG/JPG/WebP 等常见格式互转 | ✅ 可用 |
 | 图片裁剪 | 自由裁剪，支持多种比例预设 | ✅ 可用 |
+| 图片旋转 | 拖拽旋转或按钮快速旋转，Shift角度吸附，批量处理 | ✅ 可用 |
+| 图片水印 | 文字/图片水印，无限缩放、旋转控制、5种预设模板（机密文件/平铺等） | ✅ 可用 |
+| 抠图透明 | 画笔涂抹保留/擦除、反选圈外透明、红色蒙版、背景替换 | 🚧 开发中 |
 
 ## 关键词
 
@@ -60,81 +112,59 @@
 ## 目录结构
 
 ```text
-qushuiyin/
-├─ api/                      # 小程序请求封装
-├─ app.js
-├─ app.json
-├─ app.less
-├─ config.js                 # 小程序后端地址
-├─ pages/
-│  └─ home/
-│     ├─ index.js
-│     ├─ index.json
-│     ├─ index.less
-│     └─ index.wxml
-├─ server/
-│  ├─ app.py                 # FastAPI 应用入口
-│  ├─ main.py                # 本地启动入口
-│  ├─ config.py              # 环境变量配置
+content-creator-toolbox/
+├─ server/                   # Python FastAPI 后端
+│  ├─ app.py                 # FastAPI 应用入口（生产用，gunicorn）
+│  ├─ main.py                # 本地开发启动入口
+│  ├─ database.py            # SQLite数据库
 │  ├─ api/                   # 路由层
 │  │  ├─ routes_health.py    # 健康检查
 │  │  ├─ routes_parse.py     # 视频解析路由
-│  │  └─ routes_multimodal.py # 多模态文案提取路由
-│  ├─ parsers/               # 平台解析器
-│  │  ├─ douyin.py           # 抖音基础解析器（分享页HTML提取）
-│  │  ├─ douyin_api.py       # 抖音官方API解析器（无水印核心）
-│  │  ├─ douyin_v2.py        # 抖音v2解析器（备用方案）
-│  │  ├─ douyin_sign.py      # 抖音签名算法（SM3+RC4+Base64）
-│  │  ├─ kuaishou.py         # 快手解析器
-│  │  └─ xiaohongshu.py      # 小红书解析器
-│  ├─ schemas/               # 请求与响应模型
-│  │  ├─ request.py          # 请求模型
-│  │  └─ response.py         # 响应模型
-│  ├─ services/              # 业务逻辑
-│  │  ├─ parser_service.py   # 解析调度服务
-│  │  ├─ third_party_service.py # 第三方API兜底服务
-│  │  ├─ downloader_service.py  # 下载代理服务
-│  │  └─ url_service.py      # URL提取与解析服务
-│  └─ utils/                 # 工具函数
-│     ├─ exceptions.py       # 自定义异常类
-│     ├─ http_client.py      # HTTP客户端（含防盗链Referer）
-│     ├─ logger.py           # 日志工具
-│     └─ text_extractor.py   # 文本提取工具
+│  │  ├─ routes_multimodal.py # 多模态文案提取路由
+│  │  └─ routes_stats.py     # 使用统计路由
+│  ├─ parsers/               # 平台解析器（抖音/快手/小红书）
+│  ├─ schemas/               # 请求与响应Pydantic模型
+│  ├─ services/              # 业务逻辑（解析调度、第三方兜底、下载、统计）
+│  └─ utils/                 # 工具函数（HTTP客户端、签名算法、日志等）
 ├─ web/                      # Web 前端（React + TypeScript + Vite）
 │  ├─ src/
-│  │  ├─ components/         # 组件
+│  │  ├─ components/         # 工具组件（每个工具一个TSX文件）
 │  │  │  ├─ VideoParser.tsx  # 短视频解析
 │  │  │  ├─ TextExtractor.tsx # 文案提取
 │  │  │  ├─ CoverSaver.tsx   # 封面保存
-│  │  │  ├─ ImageGrid.tsx    # 多宫格切图
+│  │  │  ├─ ImageGrid.tsx    # 多宫格
+│  │  │  ├─ ImageStitch.tsx  # 图片拼接
 │  │  │  ├─ ImageCompress.tsx # 图片压缩
 │  │  │  ├─ ImageConvert.tsx # 格式转换
-│  │  │  └─ ImageCrop.tsx    # 图片裁剪
-│  │  ├─ pages/              # 页面
-│  │  │  ├─ Home.tsx         # 首页
-│  │  │  └─ Settings.tsx     # 设置页
-│  │  ├─ store/              # 状态管理
-│  │  ├─ data/               # 数据配置
-│  │  ├─ api/                # API 封装
-│  │  └─ ...
-│  ├─ public/                # 静态资源
+│  │  │  ├─ ImageCrop.tsx    # 图片裁剪
+│  │  │  ├─ ImageRotate.tsx  # 图片旋转
+│  │  │  ├─ ImageWatermark.tsx # 图片水印
+│  │  │  ├─ ImageRemoveBg.tsx # 抠图透明(beta)
+│  │  │  ├─ ToolCard.tsx     # 工具卡片
+│  │  │  ├─ ToolLayout.tsx   # 工具页布局
+│  │  │  └─ PlaceholderTool.tsx # 占位页（开发中工具）
+│  │  ├─ pages/              # 页面（Home首页、Settings设置页）
+│  │  ├─ data/tools.ts       # 工具注册配置（工具列表、路由、图标、状态）
+│  │  ├─ api/request.ts      # API 请求封装
+│  │  └─ App.tsx             # 应用根组件+路由配置
+│  ├─ public/                # 静态资源（logo等）
+│  ├─ Dockerfile.frontend    # 前端Docker镜像（多阶段构建：node构建→nginx托管）
 │  ├─ package.json
-│  ├─ vite.config.ts
-│  ├─ tailwind.config.js
-│  └─ tsconfig.json
+│  ├─ vite.config.ts         # 含/api代理到后端的配置
+│  └─ tailwind.config.js
 ├─ deploy/
-│  ├─ nginx.conf
-│  ├─ qushuiyin.service
-│  └─ run_nohup.sh
+│  ├─ DEPLOY_GUIDE.md        # ⭐ 保姆级Docker部署教程（第一次部署必看）
+│  ├─ nginx.conf             # Nginx配置
+│  └─ qushuiyin.service      # systemd服务配置（传统部署用）
 ├─ docs/
-│  └─ TROUBLESHOOTING.md
-├─ .trae/
-│  └─ documents/
-│     ├─ PRD.md              # 产品需求文档
-│     └─ TechnicalArchitecture.md # 技术架构文档
+│  └─ TROUBLESHOOTING.md     # 问题排查
+├─ data/                     # SQLite数据目录（统计数据）
+├─ docker-compose.yml        # Docker Compose编排（后端+前端双容器）
+├─ Dockerfile.backend        # 后端Docker镜像（python:3.11-slim）
+├─ .env.example              # 环境变量模板（部署时复制为.env）
+├─ requirements.txt          # Python依赖
 ├─ CHANGELOG.md              # 变更日志
-├─ .env.example
-└─ requirements.txt
+└─ README.md                 # 本文件
 ```
 
 ## 一、本地运行后端
@@ -352,9 +382,10 @@ export default {
 
 详细的保姆级Docker部署教程请看：**[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)**
 
-简单来说，连接服务器上传代码后只需要3条命令：
+简单来说，服务器上安装Docker后只需要3条命令：
 ```bash
-cp .env.production.example .env
+git clone 你的仓库地址 content-creator-toolbox && cd content-creator-toolbox
+cp .env.example .env
 docker compose up -d --build
 ```
 然后访问 `http://你的服务器IP:18080` 即可。
@@ -365,17 +396,22 @@ docker compose up -d --build
 |------|---------|
 | 构建报错 `python:3.11-slim: not found` | 国内网络问题，先配置Docker镜像加速器，详见DEPLOY_GUIDE.md |
 | `docker.io/library/xxx: pull access denied` | 不要改Dockerfile镜像名为阿里云仓库地址，配置daemon.json加速器即可 |
+| `env file .env not found` | 执行 `cp .env.example .env` 创建环境变量文件 |
 | `curl 127.0.0.1:17891/health` Connection refused | 正常！后端只在Docker内网暴露，用 `curl 127.0.0.1:18080/health` 验证 |
 | 访问 `/api/health` 返回404 | 已修复，拉取最新代码重新构建即可 |
 | 浏览器访问超时 | 检查阿里云安全组是否开放18080端口 |
 | `version is obsolete` 警告 | 忽略即可，不影响功能 |
 
-**本地修改代码后更新到服务器：**
+### 📦 服务器上更新项目（代码push到GitHub后）
+
 ```bash
 cd /opt/projects/content-creator-toolbox
 git pull
 docker compose up -d --build
+docker compose ps    # 确认两个容器都是Up状态
 ```
+
+> 💡 完整更新流程（含.env检查、预拉取镜像、日志排查）见 DEPLOY_GUIDE.md 第七部分。
 
 详细的图文级部署教程和完整问题排查请参考 **[deploy/DEPLOY_GUIDE.md](file:///f:/Pyhton_Project/content-creator-toolbox/deploy/DEPLOY_GUIDE.md)**。
 

@@ -241,14 +241,16 @@ cd content-creator-toolbox
 ## ⚙️ 第四部分：配置环境变量
 
 ```bash
-# 1. 复制生产环境配置文件
-cp .env.production.example .env
+# 1. 复制环境变量配置文件（项目根目录下有 .env.example）
+cp .env.example .env
 
 # 2. 确认.env文件存在
 ls -la .env
 ```
 
-看到 `.env` 文件就OK，默认配置已经可以用了，不需要改！
+看到 `.env` 文件就OK，默认配置已经可以直接使用，不需要修改！
+
+> 💡 **说明**：`.env.example` 是项目自带的模板配置文件，里面包含了后端端口、CORS 等基础配置。对于大多数部署场景，直接复制使用即可，不需要额外修改。
 
 ---
 
@@ -344,29 +346,123 @@ http://你的服务器公网IP:18080
 
 ## 🔄 第七部分：本地修改代码后，如何同步更新到服务器
 
-每次你在本地修改代码、推送到GitHub后，服务器上按以下步骤更新即可：
+> **本章节根据实际部署经验整理，包含完整操作示例和踩坑点。**
+>
+> 每次你在本地修改代码、`git push` 推送到 GitHub 后，在服务器上按以下步骤更新。
 
-### 步骤1：连接到服务器，进入项目目录
+### 完整更新流程（推荐顺序，照着做不会出错）
+
+**步骤1：连接到服务器，进入项目目录**
 ```bash
 cd /opt/projects/content-creator-toolbox
 ```
 
-### 步骤2：拉取最新代码
+确认当前目录正确：
+```bash
+ls
+```
+你应该能看到 `docker-compose.yml`、`Dockerfile.backend`、`Dockerfile.frontend`、`web/`、`server/`、`.env.example` 等文件。
+
+**步骤2：检查.env文件是否存在（首次部署或新服务器必做！）**
+```bash
+ls -la .env
+```
+- 如果提示 `ls: cannot access '.env': No such file or directory`，需要复制一份：
+  ```bash
+  cp .env.example .env
+  ```
+- 如果已经存在，跳过此步。**不要重复复制，否则会覆盖已有配置。**
+
+> ⚠️ **踩坑记录**：如果直接执行 `docker compose up -d --build` 而没有 `.env` 文件，会报错：
+> ```
+> env file /opt/projects/content-creator-toolbox/.env not found: stat ... no such file or directory
+> ```
+> 这时候复制 `.env.example` 为 `.env` 即可。
+
+**步骤3（可选但推荐）：预拉取基础镜像，避免构建时网络超时**
+```bash
+docker pull python:3.11-slim
+docker pull node:20-alpine
+docker pull nginx:alpine
+```
+> 如果提示 `Image is up to date` 说明本地已经是最新，跳过即可。
+> 如果某个镜像拉取失败，可以多执行几次，或者参考第五部分改用非slim版本。
+
+**步骤4：拉取最新代码**
 ```bash
 git pull
 ```
+看到 `Already up to date.` 说明已经是最新；看到文件变更列表说明拉取成功。
 
-### 步骤3：重新构建并启动（只有代码变更时会重新构建，很快）
+**步骤5：重新构建并启动**
 ```bash
 docker compose up -d --build
 ```
 
-完成！刷新浏览器就能看到最新代码了。
+> ⚠️ 如果提示 `version is obsolete` 警告，**直接忽略**！这是新版 Docker Compose 不再推荐写 version 字段，不影响任何功能。
+>
+> ⏳ 第一次构建或有依赖变更时会比较慢（1-5分钟），如果只改了业务代码则很快（几十秒）。
 
-> 💡 如果只改了前端代码，也可以只重建前端：
-> ```bash
-> docker compose up -d --build frontend
-> ```
+**步骤6：验证容器运行状态**
+```bash
+docker compose ps
+```
+你应该看到两个容器都是 `Up` 状态：
+- `toolbox-backend`
+- `toolbox-frontend`
+
+如果某个容器状态不是 `Up`，查看日志排查：
+```bash
+docker compose logs backend   # 查看后端日志
+docker compose logs frontend  # 查看前端日志
+```
+
+**步骤7：浏览器验证**
+
+刷新浏览器 `http://你的服务器IP:18080`，按 `Ctrl+F5` 强制刷新清除缓存，确认新功能已生效。
+
+---
+
+### 更新流程速查表（熟悉后用）
+
+```bash
+cd /opt/projects/content-creator-toolbox
+# 如果提示.env不存在，先执行: cp .env.example .env
+git pull
+docker compose up -d --build
+docker compose ps
+```
+
+---
+
+### 常见更新场景
+
+**场景A：只改了前端代码（React/TSX/CSS）**
+```bash
+cd /opt/projects/content-creator-toolbox
+git pull
+docker compose up -d --build frontend
+```
+只重建前端，速度更快。
+
+**场景B：只改了后端代码（Python）**
+```bash
+cd /opt/projects/content-creator-toolbox
+git pull
+docker compose up -d --build backend
+```
+
+**场景C：修改了 docker-compose.yml 或 Dockerfile**
+必须全量重建：
+```bash
+docker compose up -d --build
+```
+
+**场景D：构建出现奇怪缓存问题（比如改了代码但页面没更新）**
+```bash
+docker builder prune -a -f
+docker compose up -d --build
+```
 
 ---
 
